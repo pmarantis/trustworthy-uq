@@ -23,7 +23,7 @@ dm = NomadicLocalizationDataModule(
 )
 dm.setup()
 
-head, calibration, test = uq._split_dataset(dm.test_dataset)
+head, calibration, test = uq.split_dataset(dm.test_dataset)
 uq.calibrate_cqr(calibration, sla_levels=[0.90, 0.95, 0.99], save_path="cqr_calibration.json")
 metrics, predictions = uq.evaluate(test, sla_levels=[0.90, 0.95, 0.99], output_dir="output/cqr")
 print(metrics)
