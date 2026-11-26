@@ -39,6 +39,49 @@ class LocalizationUQ:
         self.cqr_calibration_info = {}
         self.ascp_calibration_info = {}
 
+    @classmethod
+    def from_artifacts(cls, adn_model, cqr_model=None, ascp_model=None,
+                       calibration=None, sla_levels=None, **kwargs):
+        """Build a ready-to-use pipeline from saved model artifacts.
+
+        Parameters
+        ----------
+        adn_model:
+            Path to the ADN backbone checkpoint (required).
+        cqr_model:
+            Optional path to a trained one-sided multi-SLA CQR head checkpoint.
+        ascp_model:
+            Optional path to a trained Adaptive-SCP scale model checkpoint.
+        calibration:
+            Optional path to a calibration JSON written by ``calibrate_cqr``
+            or ``calibrate_adaptive_scp``.  When given, ``predict`` and
+            ``evaluate`` can be called without calibrating again.
+        sla_levels:
+            SLA levels to use by default.  When a CQR head is loaded these
+            must be a subset of the levels the head was trained for; if
+            omitted, the head's own levels are used.
+        **kwargs:
+            Forwarded to the constructor (``device``, ``seed``,
+            ``batch_size``, ``num_workers``, ``split``).
+        """
+        uq = cls(sla_levels=sla_levels, **kwargs)
+        uq.load_adn(adn_model)
+        if cqr_model is not None:
+            uq.load_cqr(cqr_model)
+            if sla_levels is not None:
+                trained = list(uq.cqr_model.sla_levels)
+                missing = [level for level in sla_levels if level not in trained]
+                if missing:
+                    raise ValueError(
+                        f"SLA levels {missing} are not available in the CQR head "
+                        f"(trained for {trained}).")
+                uq.sla_levels = list(sla_levels)
+        if ascp_model is not None:
+            uq.load_ascp(ascp_model)
+        if calibration is not None:
+            uq.load_calibration(calibration)
+        return uq
+
     # ------------------------------------------------------------------
     # Data
     # ------------------------------------------------------------------
