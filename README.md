@@ -31,3 +31,17 @@ metrics, predictions = uq.evaluate(test_dataset, sla_levels=[0.95])
 ```
 
 The package keeps the CQR head multi-SLA: it is trained once for the configured SLA levels, while conformal calibration can be performed for one or more of those levels.
+
+## Online inference
+
+`TrustedLocalizer` wraps a calibrated `LocalizationUQ` for per-sample use and saves it as a self-contained engine directory (`engine.json` plus Lightning-compatible checkpoints):
+
+```python
+from trustworthy_uq import TrustedLocalizer
+
+TrustedLocalizer(uq, method="CQR").save("engine/")   # after calibration
+
+localizer = TrustedLocalizer.load("engine/")         # no dataset needed
+result = localizer.locate(csi)    # complex (64, 100) or real (2, 64, 100); batches give a list
+result.position_mm, result.radius(0.95), result.meets(25.0, sla=0.95), result.to_dict()
+```

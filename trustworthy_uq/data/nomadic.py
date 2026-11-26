@@ -10,8 +10,29 @@ import os
 from torch.utils.data import Dataset, DataLoader
 
 
+# Accepted spellings of the augmentation methods. The ADN training code and the
+# paper script use "random_attenuation" / "no_augmentation"; the original
+# loader only accepted "random attenuation".
+_AUGMENT_ALIASES = {
+    None: None, "": None, "none": None, "no_augmentation": None, "no augmentation": None,
+    "vanilla": "vanilla",
+    "random_attenuation": "random attenuation", "random attenuation": "random attenuation",
+}
+
+
+def normalize_augment_method(augment_method):
+    """Return None, "vanilla" or "random attenuation" for any accepted spelling."""
+    key = augment_method.strip().lower() if isinstance(augment_method, str) else augment_method
+    if key not in _AUGMENT_ALIASES:
+        raise ValueError(
+            f"Invalid augmentation method {augment_method!r}. "
+            "Use 'random_attenuation', 'vanilla' or 'no_augmentation'.")
+    return _AUGMENT_ALIASES[key]
+
+
 class NomadicLocalizationDataset(Dataset):
     def __init__(self, data_dir, sample_ids, labels, augment_method=None):
+        augment_method = normalize_augment_method(augment_method)
         self.labels = labels[:, :2].astype(np.float32)
         self.sample_ids = sample_ids
         self.sample_ids_len = len(self.sample_ids)
@@ -84,6 +105,7 @@ class NomadicLocalizationDataModule(L.LightningDataModule):
         self.mode = mode
         self.sample_ids = sample_ids
 
+        augment_method = normalize_augment_method(augment_method)
         if augment_method and mode == "test_only":
             raise ValueError("Cannot augment test data.")
         if augment_method and mode == "train_nomadic":
